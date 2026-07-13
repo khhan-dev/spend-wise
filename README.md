@@ -62,6 +62,15 @@ alembic upgrade head
 
 ---
 
+## 테스트
+
+```bash
+pip install -r requirements-dev.txt
+pytest                      # 격리된 SQLite로 auth·경비·워크플로우 23개 테스트
+```
+
+각 테스트는 스키마를 재생성·시드해 완전히 격리됩니다(`conftest.py`).
+
 ## 핵심 흐름 (API)
 
 ```
