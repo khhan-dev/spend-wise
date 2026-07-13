@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     upload_dir: str = "storage/uploads"
     export_dir: str = "storage/exports"
 
+    # 프론트엔드 CORS 허용 오리진 (콤마로 구분)
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     @property
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite")
