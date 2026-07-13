@@ -48,7 +48,13 @@ docker compose up --build
 `.env` 의 `DATABASE_URL` 을 RDS(PostgreSQL)로 바꾸고, 마이그레이션을 적용한다:
 
 ```bash
-alembic revision --autogenerate -m "init"   # 최초 1회 스키마 생성
+alembic upgrade head        # 초기 스키마 마이그레이션 적용 (ea8d1e0dc89e)
+```
+
+모델을 변경한 뒤에는 새 마이그레이션을 생성한다:
+
+```bash
+alembic revision --autogenerate -m "변경 내용"
 alembic upgrade head
 ```
 
