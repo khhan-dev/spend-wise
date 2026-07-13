@@ -1,7 +1,7 @@
 import datetime as dt
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,9 @@ from app.schemas.expense import (
 from app.services import expense_rules
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
+
+# 작성자가 수정·삭제할 수 있는 상태
+EDITABLE_STATES = (ReportStatus.draft, ReportStatus.rejected)
 
 
 # ── 헬퍼 ─────────────────────────────────────────
@@ -127,6 +130,50 @@ def get_report(report_id: uuid.UUID, db: Session = Depends(get_db), user: User =
     if not _can_view(user, report):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="열람 권한이 없습니다.")
     return report
+
+
+def _require_owner_editable(report: ExpenseReport, user: User) -> None:
+    if report.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="본인 신청서만 수정할 수 있습니다.")
+    if report.status not in EDITABLE_STATES:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="제출 이후에는 수정할 수 없습니다. 반려된 경우에만 다시 수정할 수 있습니다.",
+        )
+
+
+@router.put("/reports/{report_id}", response_model=ExpenseReportOut)
+def update_report(
+    report_id: uuid.UUID,
+    body: ExpenseReportCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """신청서 전체 수정(제목·귀속월·항목 일괄 교체). 작성중/반려 상태의 본인 신청서만."""
+    report = _load_report_or_404(db, report_id)
+    _require_owner_editable(report, user)
+
+    dept, team = _user_org(user)
+    report.title = body.title
+    report.period = body.period
+    report.items = [_build_item(db, it, dept, team) for it in body.items]  # 기존 항목은 교체(삭제)
+    db.commit()
+    db.refresh(report)
+    return report
+
+
+@router.delete("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_report(
+    report_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """신청서 삭제. 작성중/반려 상태의 본인 신청서만."""
+    report = _load_report_or_404(db, report_id)
+    _require_owner_editable(report, user)
+    db.delete(report)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/reports/{report_id}/submit", response_model=ExpenseReportOut)

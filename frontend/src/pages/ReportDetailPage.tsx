@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { endpoints } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 import {
   EVIDENCE_LABEL,
   PAY_LABEL,
@@ -13,6 +14,8 @@ import type { ExpenseReport, ItemValidation } from "../lib/types";
 export function ReportDetailPage() {
   const { id = "" } = useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const { data: report } = useQuery<ExpenseReport>({
     queryKey: ["report", id],
@@ -32,11 +35,25 @@ export function ReportDetailPage() {
     },
   });
 
+  const remove = useMutation({
+    mutationFn: () => endpoints.deleteReport(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reports"] });
+      navigate("/expenses");
+    },
+  });
+
   if (!report) return <p className="text-gray-400">불러오는 중…</p>;
 
   const valById = Object.fromEntries(validations.map((v) => [v.item_id, v]));
   const total = report.items.reduce((s, i) => s + i.total_amount, 0);
-  const canSubmit = report.status === "draft" || report.status === "rejected";
+  const editable = report.status === "draft" || report.status === "rejected";
+  const isOwner = user?.id === report.user_id;
+  const canEdit = editable && isOwner;
+
+  function onDelete() {
+    if (window.confirm("이 신청서를 삭제할까요? 되돌릴 수 없습니다.")) remove.mutate();
+  }
 
   return (
     <div className="space-y-5">
@@ -50,12 +67,20 @@ export function ReportDetailPage() {
             {report.period} · {report.items.length}건 · 합계 {won(total)}원
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span className={`chip ${STATUS_STYLE[report.status]}`}>{STATUS_LABEL[report.status]}</span>
-          {canSubmit && (
-            <button className="btn-primary" disabled={submit.isPending} onClick={() => submit.mutate()}>
-              {submit.isPending ? "제출 중…" : "제출하기"}
-            </button>
+          {canEdit && (
+            <>
+              <Link to={`/expenses/${id}/edit`} className="btn-ghost">
+                수정
+              </Link>
+              <button className="btn-danger" disabled={remove.isPending} onClick={onDelete}>
+                삭제
+              </button>
+              <button className="btn-primary" disabled={submit.isPending} onClick={() => submit.mutate()}>
+                {submit.isPending ? "제출 중…" : "제출하기"}
+              </button>
+            </>
           )}
         </div>
       </div>

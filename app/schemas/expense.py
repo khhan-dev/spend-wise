@@ -33,6 +33,7 @@ class ExpenseItemOut(BaseModel):
     vat_amount: int
     total_amount: int
     account_id: uuid.UUID | None
+    vendor_name: str | None
     evidence_type: EvidenceType
     pay_method: PayMethod
     vat_deductible: bool

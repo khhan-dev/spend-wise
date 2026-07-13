@@ -167,6 +167,10 @@ class ExpenseItem(Base):
         back_populates="item", uselist=False, cascade="all, delete-orphan"
     )
 
+    @property
+    def vendor_name(self) -> str | None:
+        return self.vendor.name if self.vendor else None
+
 
 class Receipt(Base):
     __tablename__ = "receipt"

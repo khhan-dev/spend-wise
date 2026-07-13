@@ -81,6 +81,10 @@ export const endpoints = {
   report: (id: string) => api.get(`/api/v1/expenses/reports/${id}`).then((r) => r.data),
   createReport: (body: unknown) =>
     api.post("/api/v1/expenses/reports", body).then((r) => r.data),
+  updateReport: (id: string, body: unknown) =>
+    api.put(`/api/v1/expenses/reports/${id}`, body).then((r) => r.data),
+  deleteReport: (id: string) =>
+    api.delete(`/api/v1/expenses/reports/${id}`).then((r) => r.data),
   submitReport: (id: string) =>
     api.post(`/api/v1/expenses/reports/${id}/submit`).then((r) => r.data),
   validate: (id: string) =>

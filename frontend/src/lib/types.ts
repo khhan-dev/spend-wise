@@ -40,6 +40,7 @@ export interface ExpenseItem {
   vat_amount: number;
   total_amount: number;
   account_id: string | null;
+  vendor_name: string | null;
   evidence_type: EvidenceType;
   pay_method: PayMethod;
   vat_deductible: boolean;
