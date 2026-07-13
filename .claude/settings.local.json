@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:changeui.co.kr)",
+      "Skill(artifact-design)",
+      "Skill(artifact-design:*)",
+      "Bash(python build_xlsx.py)",
+      "Bash(python -m pip install openpyxl -q)",
+      "Bash(where python *)",
+      "Bash(where python3 *)",
+      "Bash(py --version)",
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(C:/Users/Hoon/AppData/Local/Programs/Python/Python312/python.exe -m pip install openpyxl -q)",
+      "Bash(C:/Users/Hoon/AppData/Local/Programs/Python/Python312/python.exe build_xlsx.py)",
+      "Bash(C:/Users/Hoon/AppData/Local/Programs/Python/Python312/python.exe C:/Users/Hoon/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/41442e7d-b34d-4767-af2e-97af561569ea/5a7885d8-57e5-4f26-adb5-5aa860d2ad20/skills/xlsx/scripts/recalc.py 'F:/00. Ai/11. semusa/경비처리_양식_샘플.xlsx' 60)",
+      "Read(//c/Program Files/LibreOffice/program/**)",
+      "Read(//c/Program Files \\\\\\(x86\\\\\\)/LibreOffice/program/**)",
+      "Bash(where soffice *)",
+      "Bash(C:/Users/Hoon/AppData/Local/Programs/Python/Python312/python.exe -m pip install formulas -q)",
+      "Bash(C:/Users/Hoon/AppData/Local/Programs/Python/Python312/python.exe verify.py)",
+      "Bash(PYTHONIOENCODING=utf-8 C:/Users/Hoon/AppData/Local/Programs/Python/Python312/python.exe chk.py)",
+      "Bash(C:/Users/Hoon/AppData/Local/Programs/Python/Python312/python.exe -m pip install -q fastapi 'sqlalchemy>=2.0' pydantic-settings PyJWT bcrypt python-multipart email-validator openpyxl httpx)",
+      "Bash(C:/Users/Hoon/AppData/Local/Programs/Python/Python312/python.exe -m compileall -q app scripts)",
+      "Bash(git rm *)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)"
+    ]
+  }
+}

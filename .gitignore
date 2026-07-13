@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# DB / storage
+*.db
+storage/
+dev.db
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Alembic 로컬 산출물은 유지, versions는 커밋
+
+# Claude 로컬 설정
+.claude/settings.local.json
