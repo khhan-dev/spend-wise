@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles
 from app.core.database import get_db
-from app.models import ClosingBatch, ExpenseItem, ExpenseReport, Role, User
-from app.models.enums import ReportStatus
+from app.models import ApprovalLog, ClosingBatch, ExpenseItem, ExpenseReport, Role, User
+from app.models.enums import ApprovalAction, ReportStatus
 from app.schemas.common import ClosingOut
 from app.services.excel_export import generate_closing_excel
 from app.services.storage import get_storage
@@ -28,7 +28,7 @@ class CloseRequest(BaseModel):
 def close_period(
     body: CloseRequest,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(Role.admin)),
+    user: User = Depends(require_roles(Role.admin)),
 ):
     """월 마감: 검토완료 신청서를 잠그고 세무 신고용 엑셀을 생성한다."""
     if db.scalar(select(ClosingBatch).where(ClosingBatch.period == body.period)):
@@ -53,6 +53,7 @@ def close_period(
         report.status = ReportStatus.closed
         for item in report.items:
             item.closing_batch_id = batch.id
+        db.add(ApprovalLog(report_id=report.id, actor_id=user.id, action=ApprovalAction.close))
 
     path = generate_closing_excel(db, body.period)
     batch.export_key = path

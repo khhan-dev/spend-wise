@@ -3,13 +3,16 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { authedBlob, endpoints } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import {
+  ACTION_LABEL,
+  ACTION_STYLE,
   EVIDENCE_LABEL,
   PAY_LABEL,
   STATUS_LABEL,
   STATUS_STYLE,
+  formatDateTime,
   won,
 } from "../lib/format";
-import type { ExpenseReport, ItemValidation } from "../lib/types";
+import type { ApprovalLog, ExpenseReport, ItemValidation } from "../lib/types";
 
 export function ReportDetailPage() {
   const { id = "" } = useParams();
@@ -26,12 +29,18 @@ export function ReportDetailPage() {
     queryFn: () => endpoints.validate(id),
     enabled: !!report,
   });
+  const { data: history = [] } = useQuery<ApprovalLog[]>({
+    queryKey: ["history", id],
+    queryFn: () => endpoints.history(id),
+    enabled: !!report,
+  });
 
   const submit = useMutation({
     mutationFn: () => endpoints.submitReport(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["report", id] });
       qc.invalidateQueries({ queryKey: ["reports"] });
+      qc.invalidateQueries({ queryKey: ["history", id] });
     },
   });
 
@@ -50,6 +59,8 @@ export function ReportDetailPage() {
   const editable = report.status === "draft" || report.status === "rejected";
   const isOwner = user?.id === report.user_id;
   const canEdit = editable && isOwner;
+  const rejectComment = [...history].reverse().find((h) => h.action === "reject")?.comment ?? null;
+  const warningCount = validations.filter((v) => v.evidence_warning || !v.amount_ok).length;
 
   function onDelete() {
     if (window.confirm("이 신청서를 삭제할까요? 되돌릴 수 없습니다.")) remove.mutate();
@@ -89,6 +100,19 @@ export function ReportDetailPage() {
           )}
         </div>
       </div>
+
+      {report.status === "rejected" && (
+        <div className="rounded-lg border border-seal/30 bg-seal/10 px-4 py-3 text-sm text-seal">
+          <b>반려되었습니다.</b>
+          {rejectComment ? ` 사유: ${rejectComment}` : ""} 수정 후 다시 제출해 주세요.
+        </div>
+      )}
+      {warningCount > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          ⚠ 검증 경고 <b>{warningCount}건</b> — 3만원 초과 비적격 증빙 또는 금액 불일치 항목이 있습니다. 아래 표의 ‘검증’
+          열을 확인하세요.
+        </div>
+      )}
 
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
@@ -155,6 +179,27 @@ export function ReportDetailPage() {
         결제수단 예시: {report.items[0] ? PAY_LABEL[report.items[0].pay_method] : "-"} · 증빙 유형과 계정에 따라 공제 여부가
         자동 판정됩니다.
       </p>
+
+      <div className="card">
+        <h2 className="mb-4 font-semibold">승인 이력</h2>
+        {history.length === 0 ? (
+          <p className="text-sm text-gray-400">아직 이력이 없습니다. 제출하면 승인 흐름이 기록됩니다.</p>
+        ) : (
+          <ol className="relative ml-2 space-y-4 border-l border-gray-200 pl-5">
+            {history.map((h) => (
+              <li key={h.id} className="relative">
+                <span className="absolute -left-[26px] top-1 h-3 w-3 rounded-full border-2 border-white bg-ledger" />
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className={`chip ${ACTION_STYLE[h.action]}`}>{ACTION_LABEL[h.action]}</span>
+                  <span className="text-sm font-medium">{h.actor_name}</span>
+                  <span className="font-mono text-xs text-gray-400">{formatDateTime(h.created_at)}</span>
+                </div>
+                {h.comment && <p className="mt-1 text-sm text-gray-600">“{h.comment}”</p>}
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
     </div>
   );
 }

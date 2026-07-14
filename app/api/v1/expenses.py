@@ -18,6 +18,7 @@ from app.models import (
     Vendor,
 )
 from app.models.enums import ApprovalAction, OcrStatus, ReportStatus
+from app.schemas.common import ApprovalLogOut
 from app.schemas.expense import (
     ExpenseItemIn,
     ExpenseReportCreate,
@@ -195,6 +196,15 @@ def submit_report(report_id: uuid.UUID, db: Session = Depends(get_db), user: Use
     db.commit()
     db.refresh(report)
     return report
+
+
+@router.get("/reports/{report_id}/history", response_model=list[ApprovalLogOut])
+def report_history(report_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """제출·승인·반려·검토·마감 이력(시간순)."""
+    report = _load_report_or_404(db, report_id)
+    if not _can_view(user, report):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="열람 권한이 없습니다.")
+    return sorted(report.approvals, key=lambda a: a.created_at)
 
 
 @router.get("/reports/{report_id}/validate", response_model=list[ItemValidation])

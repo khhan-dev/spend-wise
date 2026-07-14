@@ -204,6 +204,10 @@ class ApprovalLog(Base):
     report: Mapped["ExpenseReport"] = relationship(back_populates="approvals")
     actor: Mapped["User"] = relationship()
 
+    @property
+    def actor_name(self) -> str:
+        return self.actor.name if self.actor else ""
+
 
 class ClosingBatch(Base):
     __tablename__ = "closing_batch"

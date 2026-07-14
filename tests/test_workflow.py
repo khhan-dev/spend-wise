@@ -68,6 +68,25 @@ def test_close_without_reviewed_fails(client, auth, accounts):
     assert r.status_code == 400
 
 
+def test_report_history_records_actions(client, auth, accounts):
+    rid = _create_and_submit(client, auth, accounts)
+    client.post(f"/api/v1/approvals/{rid}/reject", headers=auth(MANAGER), json={"comment": "금액 재확인 필요"})
+    hist = client.get(f"/api/v1/expenses/reports/{rid}/history", headers=auth(EMPLOYEE)).json()
+    assert [h["action"] for h in hist] == ["submit", "reject"]  # 시간순
+    reject = hist[-1]
+    assert reject["comment"] == "금액 재확인 필요"
+    assert reject["actor_name"] == "김팀장"
+
+
+def test_history_includes_close(client, auth, accounts):
+    rid = _create_and_submit(client, auth, accounts)
+    client.post(f"/api/v1/approvals/{rid}/approve", headers=auth(MANAGER), json={})
+    client.post(f"/api/v1/approvals/{rid}/review", headers=auth(ADMIN), json={})
+    client.post("/api/v1/closings", headers=auth(ADMIN), json={"period": "2026-07"})
+    hist = client.get(f"/api/v1/expenses/reports/{rid}/history", headers=auth(ADMIN)).json()
+    assert [h["action"] for h in hist] == ["submit", "approve", "review", "close"]
+
+
 def test_role_based_report_visibility(client, auth, accounts):
     """직원은 본인 것만 조회."""
     _create_and_submit(client, auth, accounts)

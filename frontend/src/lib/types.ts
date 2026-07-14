@@ -87,6 +87,16 @@ export interface ItemValidation {
   amount_ok: boolean;
 }
 
+export type ApprovalAction = "submit" | "approve" | "reject" | "review" | "close";
+
+export interface ApprovalLog {
+  id: string;
+  action: ApprovalAction;
+  actor_name: string;
+  comment: string | null;
+  created_at: string;
+}
+
 export interface Closing {
   id: string;
   period: string;

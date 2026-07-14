@@ -1,4 +1,4 @@
-import type { EvidenceType, PayMethod, ReportStatus, Role } from "./types";
+import type { ApprovalAction, EvidenceType, PayMethod, ReportStatus, Role } from "./types";
 
 export const won = (n: number) => n.toLocaleString("ko-KR");
 
@@ -40,6 +40,31 @@ export const ROLE_LABEL: Record<Role, string> = {
   manager: "팀장",
   admin: "경영지원실",
 };
+
+export const ACTION_LABEL: Record<ApprovalAction, string> = {
+  submit: "제출",
+  approve: "팀장 승인",
+  reject: "반려",
+  review: "검토 완료",
+  close: "마감",
+};
+
+export const ACTION_STYLE: Record<ApprovalAction, string> = {
+  submit: "bg-blue-100 text-blue-700",
+  approve: "bg-indigo-100 text-indigo-700",
+  reject: "bg-seal/10 text-seal",
+  review: "bg-ledger-soft text-ledger-dark",
+  close: "bg-ledger text-white",
+};
+
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 // 백엔드 규칙 미러 — 입력 폼 실시간 미리보기용
 const VAT_BEARING: EvidenceType[] = ["tax_invoice", "card", "cash_receipt"];
