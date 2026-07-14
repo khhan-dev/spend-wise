@@ -128,8 +128,104 @@ def parse_clova_receipt(data: dict) -> OcrResult:
     return OcrResult(success=False, fields={}, confidence=0.0)
 
 
+# ── CLOVA General(일반) 응답 파싱 (텍스트 휴리스틱) ─────────
+_BIZNO_RE = re.compile(r"\d{3}-\d{2}-\d{5}")
+_DATE_RE = re.compile(r"(20\d{2})[.\-/](\d{1,2})[.\-/](\d{1,2})")
+_AMOUNT_KEYWORDS = (
+    "합계", "합 계", "총액", "총 액", "합계금액", "결제금액",
+    "받을금액", "판매금액", "결제", "받을 금액", "합계액",
+)
+
+
+def _money(text: str) -> int | None:
+    """금액처럼 보이는 텍스트만 정수로. (사업자번호·날짜·짧은 숫자 제외)"""
+    if _BIZNO_RE.search(text) or _DATE_RE.search(text):
+        return None
+    digits = re.sub(r"[^\d]", "", text)
+    if not digits:
+        return None
+    looks_like_money = ("," in text) or ("원" in text) or len(digits) >= 3
+    if looks_like_money and len(digits) <= 9:
+        return int(digits)
+    return None
+
+
+def _extract_total(texts: list[str]) -> int | None:
+    """'합계' 등 키워드 이후 금액을 우선, 없으면 최대 금액."""
+    amounts = [(i, _money(t)) for i, t in enumerate(texts)]
+    amounts = [(i, a) for i, a in amounts if a is not None]
+    if not amounts:
+        return None
+    kw_idx = max((i for i, t in enumerate(texts) if any(k in t for k in _AMOUNT_KEYWORDS)), default=-1)
+    if kw_idx >= 0:
+        after = [a for i, a in amounts if i >= kw_idx]
+        if after:
+            return max(after)
+    return max(a for _, a in amounts)
+
+
+def _guess_vendor(texts: list[str]) -> str | None:
+    """상단부에서 금액·날짜·사업자번호·키워드가 아닌 첫 상호 후보."""
+    for t in texts[:6]:
+        if _money(t) is not None or _BIZNO_RE.search(t) or _DATE_RE.search(t):
+            continue
+        if any(k in t for k in _AMOUNT_KEYWORDS):
+            continue
+        if re.search(r"[가-힣A-Za-z]", t) and len(t) >= 2:
+            return t
+    return None
+
+
+def parse_clova_general(data: dict) -> OcrResult:
+    """CLOVA General(일반) OCR 응답(images[].fields[]) → 표준 OcrResult (휴리스틱)."""
+    images = data.get("images") or []
+    if not images:
+        return OcrResult(success=False, raw={"note": "empty images"})
+    img = images[0]
+    if img.get("inferResult") not in (None, "SUCCESS"):
+        return OcrResult(success=False, raw={"inferResult": img.get("inferResult")})
+
+    fields = img.get("fields") or []
+    texts = [
+        f["inferText"].strip()
+        for f in fields
+        if isinstance(f, dict) and isinstance(f.get("inferText"), str) and f["inferText"].strip()
+    ]
+    joined = " ".join(texts)
+
+    out: dict = {}
+    biz = _BIZNO_RE.search(joined)
+    if biz:
+        out["vendor_biz_no"] = biz.group(0)
+    dm = _DATE_RE.search(joined)
+    if dm:
+        y, m, d = dm.groups()
+        out["tx_date"] = f"{int(y):04d}-{int(m):02d}-{int(d):02d}"
+    total = _extract_total(texts)
+    if total is not None:
+        out["total_amount"] = total
+    vendor = _guess_vendor(texts)
+    if vendor:
+        out["vendor_name"] = vendor
+
+    if "total_amount" in out:
+        return OcrResult(success=True, fields=out, confidence=0.6)
+    if out:
+        return OcrResult(success=True, fields=out, confidence=0.35)
+    return OcrResult(success=False, fields={}, confidence=0.0)
+
+
+def parse_clova_response(data: dict) -> OcrResult:
+    """응답 형태에 따라 Receipt(구조화) 또는 General(텍스트) 파서로 분기."""
+    images = data.get("images") or []
+    first = images[0] if images else {}
+    if isinstance(first, dict) and first.get("receipt"):
+        return parse_clova_receipt(data)
+    return parse_clova_general(data)
+
+
 class ClovaOcrProvider(OcrProvider):
-    """Naver CLOVA OCR(Receipt) 연동."""
+    """Naver CLOVA OCR 연동 (Receipt 특화·General 일반 응답 모두 지원)."""
 
     def __init__(self, invoke_url: str, secret: str):
         self.invoke_url = invoke_url
@@ -153,7 +249,7 @@ class ClovaOcrProvider(OcrProvider):
         try:
             resp = httpx.post(self.invoke_url, json=payload, headers=headers, timeout=_HTTP_TIMEOUT)
             resp.raise_for_status()
-            return parse_clova_receipt(resp.json())
+            return parse_clova_response(resp.json())
         except Exception as exc:  # 네트워크·인증·파싱 실패 → 수동 입력 폴백
             logger.warning("CLOVA OCR 호출 실패: %s", exc)  # 시크릿은 로깅하지 않음
             return OcrResult(success=False, fields={}, confidence=0.0, raw={"error": type(exc).__name__})

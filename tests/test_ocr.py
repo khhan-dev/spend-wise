@@ -4,7 +4,9 @@ import app.services.ocr as ocr_mod
 from app.services.ocr import (
     ClovaOcrProvider,
     StubOcrProvider,
+    parse_clova_general,
     parse_clova_receipt,
+    parse_clova_response,
 )
 
 # CLOVA Receipt OCR 응답 샘플(축약)
@@ -68,6 +70,66 @@ def test_parse_receipt_no_total_is_low_confidence():
 def test_parse_receipt_empty_fails():
     assert parse_clova_receipt({"images": []}).success is False
     assert parse_clova_receipt({"images": [{"inferResult": "ERROR"}]}).success is False
+
+
+# CLOVA General(일반) OCR 응답 샘플 (텍스트 조각 목록)
+GENERAL_RESPONSE = {
+    "images": [
+        {
+            "inferResult": "SUCCESS",
+            "fields": [
+                {"inferText": "스타벅스 강남점"},
+                {"inferText": "사업자번호"},
+                {"inferText": "123-45-67890"},
+                {"inferText": "2026-07-02"},
+                {"inferText": "아메리카노"},
+                {"inferText": "4,500"},
+                {"inferText": "합계"},
+                {"inferText": "5,000"},
+            ],
+        }
+    ]
+}
+
+
+def test_parse_general_heuristic():
+    result = parse_clova_general(GENERAL_RESPONSE)
+    assert result.success is True
+    assert result.fields["vendor_biz_no"] == "123-45-67890"
+    assert result.fields["tx_date"] == "2026-07-02"
+    assert result.fields["vendor_name"] == "스타벅스 강남점"
+    # '합계' 키워드 이후 금액(5,000)을 총액으로 선택
+    assert result.fields["total_amount"] == 5000
+
+
+def test_parse_general_ignores_bizno_and_date_as_amount():
+    data = {"images": [{"inferResult": "SUCCESS", "fields": [
+        {"inferText": "123-45-67890"},
+        {"inferText": "2026-07-02"},
+    ]}]}
+    result = parse_clova_general(data)
+    # 사업자번호/날짜를 금액으로 오인하지 않음
+    assert "total_amount" not in result.fields
+
+
+def test_parse_response_dispatches():
+    # receipt 키 있으면 구조화 파서
+    assert parse_clova_response(SAMPLE_RESPONSE).fields["vendor_name"] == "스타벅스 강남점"
+    # fields만 있으면 일반 파서
+    assert parse_clova_response(GENERAL_RESPONSE).fields["total_amount"] == 5000
+
+
+def test_clova_provider_general_response(monkeypatch):
+    class FakeResp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return GENERAL_RESPONSE
+
+    monkeypatch.setattr(ocr_mod.httpx, "post", lambda *a, **k: FakeResp())
+    result = ClovaOcrProvider("http://fake/general", "secret").extract(b"img", "image/jpeg")
+    assert result.success and result.fields["total_amount"] == 5000
 
 
 def test_stub_provider_returns_failure():
