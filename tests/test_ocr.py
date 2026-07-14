@@ -70,6 +70,14 @@ def test_parse_receipt_empty_fails():
     assert parse_clova_receipt({"images": [{"inferResult": "ERROR"}]}).success is False
 
 
+def test_stub_provider_returns_failure():
+    """스텁은 항상 실패를 반환해 수동 입력 폴백을 유도한다(미연동 기본 경로)."""
+    result = StubOcrProvider().extract(b"anybytes", "image/jpeg")
+    assert result.success is False
+    assert result.fields == {}
+    assert result.confidence == 0.0
+
+
 def test_clova_provider_success(monkeypatch):
     class FakeResp:
         def raise_for_status(self):
