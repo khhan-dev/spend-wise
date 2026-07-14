@@ -33,6 +33,26 @@ export interface Account {
   default_deductible: boolean;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  department_id: string;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  code: string | null;
+  teams: Team[];
+}
+
+export interface CompanyTree {
+  id: string;
+  name: string;
+  biz_no: string | null;
+  departments: Department[];
+}
+
 export interface ExpenseItem {
   id: string;
   tx_date: string;

@@ -12,6 +12,7 @@ export function Layout() {
     { to: "/expenses/new", label: "경비 신청", roles: ["employee", "manager", "admin"] },
     { to: "/approvals", label: "승인함", roles: ["manager", "admin"] },
     { to: "/closings", label: "월 마감", roles: ["admin"] },
+    { to: "/admin", label: "관리", roles: ["admin"] },
   ].filter((n) => user && n.roles.includes(user.role));
 
   return (

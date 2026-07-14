@@ -77,6 +77,19 @@ export async function login(email: string, password: string) {
 export const endpoints = {
   me: () => api.get("/api/v1/auth/me").then((r) => r.data),
   accounts: () => api.get("/api/v1/accounts").then((r) => r.data),
+
+  // 조직 · 사용자 관리 (관리자)
+  org: () => api.get("/api/v1/org").then((r) => r.data),
+  createDepartment: (body: { name: string; code?: string }) =>
+    api.post("/api/v1/departments", body).then((r) => r.data),
+  deleteDepartment: (id: string) => api.delete(`/api/v1/departments/${id}`).then((r) => r.data),
+  createTeam: (body: { department_id: string; name: string }) =>
+    api.post("/api/v1/teams", body).then((r) => r.data),
+  deleteTeam: (id: string) => api.delete(`/api/v1/teams/${id}`).then((r) => r.data),
+  users: () => api.get("/api/v1/users").then((r) => r.data),
+  createUser: (body: unknown) => api.post("/api/v1/users", body).then((r) => r.data),
+  updateUser: (id: string, body: unknown) =>
+    api.patch(`/api/v1/users/${id}`, body).then((r) => r.data),
   reports: () => api.get("/api/v1/expenses/reports").then((r) => r.data),
   report: (id: string) => api.get(`/api/v1/expenses/reports/${id}`).then((r) => r.data),
   createReport: (body: unknown) =>

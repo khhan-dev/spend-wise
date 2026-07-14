@@ -9,6 +9,7 @@ import { EditReportPage } from "./pages/EditReportPage";
 import { ReportDetailPage } from "./pages/ReportDetailPage";
 import { ApprovalsPage } from "./pages/ApprovalsPage";
 import { ClosingsPage } from "./pages/ClosingsPage";
+import { AdminPage } from "./pages/AdminPage";
 
 export default function App() {
   return (
@@ -39,6 +40,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={["admin"]}>
               <ClosingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <AdminPage />
             </ProtectedRoute>
           }
         />

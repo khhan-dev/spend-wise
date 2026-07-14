@@ -13,6 +13,13 @@ class UserCreate(BaseModel):
     team_id: uuid.UUID | None = None
 
 
+class UserUpdate(BaseModel):
+    name: str | None = None
+    role: Role | None = None
+    team_id: uuid.UUID | None = None
+    is_active: bool | None = None
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

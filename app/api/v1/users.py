@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -6,7 +8,7 @@ from app.api.deps import require_roles
 from app.core.database import get_db
 from app.core.security import hash_password
 from app.models import Role, User
-from app.schemas.user import UserCreate, UserOut
+from app.schemas.user import UserCreate, UserOut, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -39,3 +41,21 @@ def list_users(
     _: User = Depends(require_roles(Role.admin)),
 ):
     return list(db.scalars(select(User).order_by(User.created_at)))
+
+
+@router.patch("/{user_id}", response_model=UserOut)
+def update_user(
+    user_id: uuid.UUID,
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(Role.admin)),
+):
+    """사용자 수정 (역할·소속 팀·활성 여부·이름). 지정된 필드만 반영."""
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="사용자를 찾을 수 없습니다.")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+    db.commit()
+    db.refresh(user)
+    return user
