@@ -91,7 +91,17 @@ export function ReportForm({ reportId, initialTitle, initialPeriod, initialRows 
         setRows((rs) => [...rs, emptyRow()]);
         setOcrNote("자동 인식이 어려워 빈 항목을 추가했습니다. 직접 입력해 주세요.");
       } else {
-        setOcrNote("인식 완료 — 항목에 반영되었습니다.");
+        const f = res.data.fields ?? {};
+        setRows((rs) => [
+          ...rs,
+          {
+            ...emptyRow(),
+            tx_date: f.tx_date ?? emptyRow().tx_date,
+            total_amount: typeof f.total_amount === "number" ? f.total_amount : 0,
+            vendor_name: f.vendor_name ?? "",
+          },
+        ]);
+        setOcrNote("영수증을 인식해 항목을 추가했습니다. 계정과목·증빙유형을 확인해 주세요.");
       }
     } catch {
       setOcrNote("OCR 처리 중 오류가 발생했습니다.");

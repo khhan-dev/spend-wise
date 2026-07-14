@@ -24,9 +24,17 @@ class Settings(BaseSettings):
     # 프론트엔드 CORS 허용 오리진 (콤마로 구분)
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # Naver CLOVA OCR (Receipt) — 두 값이 모두 있으면 실연동, 없으면 스텁
+    clova_ocr_invoke_url: str = ""
+    clova_ocr_secret: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def clova_ocr_enabled(self) -> bool:
+        return bool(self.clova_ocr_invoke_url and self.clova_ocr_secret)
 
     @property
     def is_sqlite(self) -> bool:
