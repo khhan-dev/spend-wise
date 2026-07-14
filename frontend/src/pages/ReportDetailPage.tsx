@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { endpoints } from "../lib/api";
+import { authedBlob, endpoints } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import {
   EVIDENCE_LABEL,
@@ -55,6 +55,11 @@ export function ReportDetailPage() {
     if (window.confirm("이 신청서를 삭제할까요? 되돌릴 수 없습니다.")) remove.mutate();
   }
 
+  async function openReceipt(itemId: string) {
+    const blob = await authedBlob(endpoints.receiptImageUrl(itemId));
+    if (blob) window.open(URL.createObjectURL(blob), "_blank");
+  }
+
   return (
     <div className="space-y-5">
       <Link to="/expenses" className="text-sm text-gray-400 hover:underline">
@@ -94,8 +99,9 @@ export function ReportDetailPage() {
               <th className="px-3 py-3 text-right font-semibold">공급가액</th>
               <th className="px-3 py-3 text-right font-semibold">부가세</th>
               <th className="px-3 py-3 text-right font-semibold">합계</th>
-              <th className="px-3 py-3 font-semibold">증빙</th>
+              <th className="px-3 py-3 font-semibold">증빙유형</th>
               <th className="px-3 py-3 font-semibold">공제</th>
+              <th className="px-3 py-3 font-semibold">영수증</th>
               <th className="px-3 py-3 font-semibold">검증</th>
             </tr>
           </thead>
@@ -119,6 +125,15 @@ export function ReportDetailPage() {
                     <span className={`chip ${it.vat_deductible ? "bg-ledger-soft text-ledger-dark" : "bg-gray-100 text-gray-500"}`}>
                       {it.vat_deductible ? "공제" : "불공제"}
                     </span>
+                  </td>
+                  <td className="px-3 py-3">
+                    {it.image_key ? (
+                      <button className="text-ledger hover:underline" onClick={() => openReceipt(it.id)}>
+                        📎 보기
+                      </button>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-xs">
                     {v?.evidence_warning ? (

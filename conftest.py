@@ -6,6 +6,9 @@ import os
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 os.environ["ENVIRONMENT"] = "test"  # lifespan의 create_all 스킵(픽스처가 담당)
 os.environ["JWT_SECRET"] = "test-secret-key-at-least-32-bytes-long!!"
+os.environ["UPLOAD_DIR"] = "storage/_test_uploads"  # 테스트 전용 증빙 저장소
+
+import shutil
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,6 +16,8 @@ from fastapi.testclient import TestClient
 from app.core.database import Base, engine
 from app.main import app
 from scripts.seed import run as seed_run
+
+_TEST_UPLOAD_DIR = "storage/_test_uploads"
 
 DEFAULT_PW = "test1234"
 ADMIN = "admin@company.com"
@@ -22,11 +27,13 @@ EMPLOYEE = "employee@company.com"
 
 @pytest.fixture(autouse=True)
 def db():
-    """각 테스트마다 스키마 재생성 + 시드로 완전 격리."""
+    """각 테스트마다 스키마 재생성 + 시드 + 증빙 저장소 초기화로 완전 격리."""
     Base.metadata.drop_all(engine)
+    shutil.rmtree(_TEST_UPLOAD_DIR, ignore_errors=True)
     seed_run()  # create_all + 계정과목/조직/사용자 시드
     yield
     Base.metadata.drop_all(engine)
+    shutil.rmtree(_TEST_UPLOAD_DIR, ignore_errors=True)
 
 
 @pytest.fixture

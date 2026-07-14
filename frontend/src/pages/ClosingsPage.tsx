@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { endpoints, tokenStore, API_BASE } from "../lib/api";
+import { authedBlob, endpoints, API_BASE } from "../lib/api";
 import type { Closing } from "../lib/types";
 
 export function ClosingsPage() {
@@ -28,19 +28,18 @@ export function ClosingsPage() {
     },
   });
 
-  async function download(c: Closing) {
-    // 인증 헤더가 필요하므로 fetch 후 blob 다운로드
-    const res = await fetch(endpoints.downloadUrl(c.id), {
-      headers: { Authorization: `Bearer ${tokenStore.access()}` },
-    });
-    if (!res.ok) return;
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+  async function save(url: string, filename: string) {
+    const blob = await authedBlob(url);
+    if (!blob) {
+      setError("다운로드에 실패했습니다. (증빙이 없거나 권한이 없을 수 있습니다)");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `경비마감_${c.period}.xlsx`;
+    a.href = objectUrl;
+    a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(objectUrl);
   }
 
   return (
@@ -90,9 +89,20 @@ export function ClosingsPage() {
                     {new Date(c.closed_at).toLocaleString("ko-KR")}
                   </td>
                   <td className="px-4 py-3">
-                    <button className="btn-ghost" onClick={() => download(c)}>
-                      ⬇ 엑셀 다운로드
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        className="btn-ghost"
+                        onClick={() => save(endpoints.downloadUrl(c.id), `경비마감_${c.period}.xlsx`)}
+                      >
+                        ⬇ 엑셀
+                      </button>
+                      <button
+                        className="btn-ghost"
+                        onClick={() => save(endpoints.receiptsZipUrl(c.id), `증빙_${c.period}.zip`)}
+                      >
+                        📎 증빙 ZIP
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

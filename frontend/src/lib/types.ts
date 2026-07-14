@@ -48,6 +48,7 @@ export interface ExpenseItem {
   team_snapshot: string | null;
   pjt_code: string | null;
   memo: string | null;
+  image_key: string | null;
 }
 
 export interface ExpenseReport {

@@ -1,18 +1,21 @@
+import io
 import os
 import uuid
+import zipfile
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles
 from app.core.database import get_db
-from app.models import ClosingBatch, ExpenseReport, Role, User
+from app.models import ClosingBatch, ExpenseItem, ExpenseReport, Role, User
 from app.models.enums import ReportStatus
 from app.schemas.common import ClosingOut
 from app.services.excel_export import generate_closing_excel
+from app.services.storage import get_storage
 
 router = APIRouter(prefix="/closings", tags=["closings"])
 
@@ -77,4 +80,43 @@ def download_excel(
         batch.export_key,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename=os.path.basename(batch.export_key),
+    )
+
+
+@router.get("/{closing_id}/receipts-zip")
+def download_receipts_zip(
+    closing_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(Role.admin)),
+):
+    """마감된 경비의 증빙 이미지를 ZIP으로 묶어 반환한다(세무대리인 전달용)."""
+    batch = db.get(ClosingBatch, closing_id)
+    if batch is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="마감 정보를 찾을 수 없습니다.")
+
+    items = list(db.scalars(select(ExpenseItem).where(ExpenseItem.closing_batch_id == batch.id)))
+    storage = get_storage()
+
+    buf = io.BytesIO()
+    count = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for it in items:
+            key = it.receipt.image_key if it.receipt else None
+            if not key or not storage.exists(key):
+                continue
+            count += 1
+            ext = key.rsplit(".", 1)[-1] if "." in key else "bin"
+            vendor = it.vendor.name if it.vendor else "거래처"
+            dept = it.dept_snapshot or "미분류"
+            arcname = f"{dept}_{vendor}_{it.tx_date}_{count:03d}.{ext}"
+            zf.writestr(arcname, storage.load(key))
+
+    if count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="첨부된 증빙 이미지가 없습니다.")
+
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="receipts_{batch.period}.zip"'},
     )

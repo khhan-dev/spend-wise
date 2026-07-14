@@ -171,6 +171,10 @@ class ExpenseItem(Base):
     def vendor_name(self) -> str | None:
         return self.vendor.name if self.vendor else None
 
+    @property
+    def image_key(self) -> str | None:
+        return self.receipt.image_key if self.receipt else None
+
 
 class Receipt(Base):
     __tablename__ = "receipt"

@@ -99,6 +99,17 @@ export const endpoints = {
   close: (period: string) =>
     api.post("/api/v1/closings", { period }).then((r) => r.data),
   downloadUrl: (id: string) => `${API_BASE}/api/v1/closings/${id}/download`,
+  receiptsZipUrl: (id: string) => `${API_BASE}/api/v1/closings/${id}/receipts-zip`,
+  receiptImageUrl: (itemId: string) => `${API_BASE}/api/v1/receipts/${itemId}/image`,
 };
+
+/** 인증 헤더가 필요한 파일을 blob으로 받아 새 탭/다운로드로 연다. */
+export async function authedBlob(url: string): Promise<Blob | null> {
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${tokenStore.access()}` },
+  });
+  if (!res.ok) return null;
+  return res.blob();
+}
 
 export { API_BASE };

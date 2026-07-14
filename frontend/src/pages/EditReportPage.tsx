@@ -35,6 +35,7 @@ export function EditReportPage() {
     evidence_type: it.evidence_type,
     pay_method: it.pay_method,
     memo: it.memo ?? "",
+    image_key: it.image_key,
   }));
 
   return (

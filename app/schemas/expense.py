@@ -22,6 +22,7 @@ class ExpenseItemIn(BaseModel):
     memo: str | None = None
     dept_snapshot: str | None = None  # 미지정 시 신청자 소속 자동 배부
     team_snapshot: str | None = None
+    image_key: str | None = None  # 업로드된 증빙 이미지 키 (있으면 항목에 첨부)
 
 
 class ExpenseItemOut(BaseModel):
@@ -41,6 +42,7 @@ class ExpenseItemOut(BaseModel):
     team_snapshot: str | None
     pjt_code: str | None
     memo: str | None
+    image_key: str | None  # 첨부된 증빙 이미지 키 (없으면 null)
 
 
 # ── 경비 신청서 ──────────────────────────────────

@@ -12,11 +12,12 @@ from app.models import (
     ApprovalLog,
     ExpenseItem,
     ExpenseReport,
+    Receipt,
     Role,
     User,
     Vendor,
 )
-from app.models.enums import ApprovalAction, ReportStatus
+from app.models.enums import ApprovalAction, OcrStatus, ReportStatus
 from app.schemas.expense import (
     ExpenseItemIn,
     ExpenseReportCreate,
@@ -24,6 +25,8 @@ from app.schemas.expense import (
     ItemValidation,
 )
 from app.services import expense_rules
+from app.services.permissions import can_view_report
+from app.services.storage import get_storage
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
@@ -64,7 +67,7 @@ def _build_item(db: Session, data: ExpenseItemIn, dept: str | None, team: str | 
         db.add(vendor)
         db.flush()
 
-    return ExpenseItem(
+    item = ExpenseItem(
         account_id=data.account_id,
         vendor_id=vendor.id if vendor else None,
         dept_snapshot=data.dept_snapshot or dept,
@@ -80,6 +83,12 @@ def _build_item(db: Session, data: ExpenseItemIn, dept: str | None, team: str | 
         memo=data.memo,
     )
 
+    # 증빙 이미지가 첨부되어 있으면 Receipt 연결(실제 저장된 키만)
+    if data.image_key and get_storage().exists(data.image_key):
+        item.receipt = Receipt(image_key=data.image_key, ocr_status=OcrStatus.manual)
+
+    return item
+
 
 def _load_report_or_404(db: Session, report_id: uuid.UUID) -> ExpenseReport:
     report = db.get(ExpenseReport, report_id)
@@ -89,11 +98,7 @@ def _load_report_or_404(db: Session, report_id: uuid.UUID) -> ExpenseReport:
 
 
 def _can_view(user: User, report: ExpenseReport) -> bool:
-    if user.role == Role.admin or report.user_id == user.id:
-        return True
-    if user.role == Role.manager and user.team_id and report.user.team_id == user.team_id:
-        return True
-    return False
+    return can_view_report(user, report)
 
 
 # ── 엔드포인트 ───────────────────────────────────

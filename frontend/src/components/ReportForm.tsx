@@ -19,6 +19,7 @@ export interface Row {
   evidence_type: EvidenceType;
   pay_method: PayMethod;
   memo: string;
+  image_key: string | null;
 }
 
 export const emptyRow = (): Row => ({
@@ -29,6 +30,7 @@ export const emptyRow = (): Row => ({
   evidence_type: "card",
   pay_method: "corporate_card",
   memo: "",
+  image_key: null,
 });
 
 interface Props {
@@ -68,6 +70,7 @@ export function ReportForm({ reportId, initialTitle, initialPeriod, initialRows 
           evidence_type: r.evidence_type,
           pay_method: r.pay_method,
           memo: r.memo || undefined,
+          image_key: r.image_key || undefined,
         })),
       };
       return reportId
@@ -87,9 +90,10 @@ export function ReportForm({ reportId, initialTitle, initialPeriod, initialRows 
     form.append("file", file);
     try {
       const res = await api.post("/api/v1/receipts/ocr", form);
+      const imageKey = res.data.image_key ?? null;
       if (res.data.manual_input_required) {
-        setRows((rs) => [...rs, emptyRow()]);
-        setOcrNote("자동 인식이 어려워 빈 항목을 추가했습니다. 직접 입력해 주세요.");
+        setRows((rs) => [...rs, { ...emptyRow(), image_key: imageKey }]);
+        setOcrNote("영수증을 첨부했습니다. 자동 인식이 어려워 항목은 직접 입력해 주세요.");
       } else {
         const f = res.data.fields ?? {};
         setRows((rs) => [
@@ -99,9 +103,10 @@ export function ReportForm({ reportId, initialTitle, initialPeriod, initialRows 
             tx_date: f.tx_date ?? emptyRow().tx_date,
             total_amount: typeof f.total_amount === "number" ? f.total_amount : 0,
             vendor_name: f.vendor_name ?? "",
+            image_key: imageKey,
           },
         ]);
-        setOcrNote("영수증을 인식해 항목을 추가했습니다. 계정과목·증빙유형을 확인해 주세요.");
+        setOcrNote("영수증을 인식·첨부했습니다. 계정과목·증빙유형을 확인해 주세요.");
       }
     } catch {
       setOcrNote("OCR 처리 중 오류가 발생했습니다.");
@@ -249,6 +254,7 @@ export function ReportForm({ reportId, initialTitle, initialPeriod, initialRows 
                   부가세 <b className="font-mono text-ink">{won(vat)}</b>
                 </span>
                 {warn && <span className="chip bg-amber-100 text-amber-700">{warn}</span>}
+                {r.image_key && <span className="chip bg-ledger-soft text-ledger-dark">📎 증빙 첨부됨</span>}
                 {rows.length > 1 && (
                   <button
                     className="ml-auto text-seal hover:underline"
