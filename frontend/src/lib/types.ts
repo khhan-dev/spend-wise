@@ -104,6 +104,30 @@ export interface Closing {
   export_key: string | null;
 }
 
+export interface NamedAmount {
+  name: string;
+  amount: number;
+  count?: number | null;
+}
+
+export interface MonthAmount {
+  period: string;
+  amount: number;
+}
+
+export interface DashboardStats {
+  total_amount: number;
+  item_count: number;
+  report_count: number;
+  status_counts: Record<string, number>;
+  deductible_amount: number;
+  non_deductible_amount: number;
+  warning_count: number;
+  by_account: NamedAmount[];
+  by_dept: NamedAmount[];
+  by_month: MonthAmount[];
+}
+
 export interface ExpenseItemInput {
   tx_date: string;
   total_amount: number;

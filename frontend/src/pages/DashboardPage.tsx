@@ -3,26 +3,24 @@ import { Link } from "react-router-dom";
 import { endpoints } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 import { STATUS_LABEL, STATUS_STYLE, won } from "../lib/format";
-import type { ExpenseReport } from "../lib/types";
+import { AreaChart, BarList, SplitBar } from "../components/Charts";
+import type { DashboardStats, ExpenseReport, ReportStatus } from "../lib/types";
+
+const STATUS_ORDER: ReportStatus[] = ["draft", "submitted", "team_approved", "reviewed", "closed", "rejected"];
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const { data: reports = [] } = useQuery<ExpenseReport[]>({
-    queryKey: ["reports"],
-    queryFn: endpoints.reports,
-  });
+  const { data: stats } = useQuery<DashboardStats>({ queryKey: ["dashboard"], queryFn: endpoints.dashboard });
+  const { data: reports = [] } = useQuery<ExpenseReport[]>({ queryKey: ["reports"], queryFn: endpoints.reports });
 
-  const total = reports.reduce(
-    (sum, r) => sum + r.items.reduce((s, i) => s + i.total_amount, 0),
-    0
-  );
-  const byStatus = (s: string) => reports.filter((r) => r.status === s).length;
+  const s = stats;
+  const inProgress = (s?.status_counts["submitted"] ?? 0) + (s?.status_counts["team_approved"] ?? 0);
 
-  const stats = [
-    { label: "전체 신청", value: reports.length, suffix: "건" },
-    { label: "합계 금액", value: won(total), suffix: "원" },
-    { label: "작성중", value: byStatus("draft") + byStatus("rejected"), suffix: "건" },
-    { label: "진행중", value: byStatus("submitted") + byStatus("team_approved"), suffix: "건" },
+  const kpis = [
+    { label: "합계 금액", value: won(s?.total_amount ?? 0), suffix: "원" },
+    { label: "경비 항목", value: s?.item_count ?? 0, suffix: "건" },
+    { label: "진행중", value: inProgress, suffix: "건" },
+    { label: "검증 경고", value: s?.warning_count ?? 0, suffix: "건", warn: (s?.warning_count ?? 0) > 0 },
   ];
 
   return (
@@ -32,18 +30,59 @@ export function DashboardPage() {
         <p className="text-sm text-gray-500">경비 처리 현황을 한눈에 확인하세요.</p>
       </div>
 
+      {/* KPI */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="card">
-            <p className="text-xs font-semibold text-gray-500">{s.label}</p>
-            <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
-              {s.value}
-              <span className="ml-1 text-sm font-normal text-gray-400">{s.suffix}</span>
+        {kpis.map((k) => (
+          <div key={k.label} className={`card ${k.warn ? "border-amber-300 bg-amber-50" : ""}`}>
+            <p className={`text-xs font-semibold ${k.warn ? "text-amber-700" : "text-gray-500"}`}>{k.label}</p>
+            <p className={`mt-1 font-mono text-2xl font-bold tabular-nums ${k.warn ? "text-amber-800" : ""}`}>
+              {k.value}
+              <span className="ml-1 text-sm font-normal text-gray-400">{k.suffix}</span>
             </p>
           </div>
         ))}
       </div>
 
+      {/* 월별 추이 */}
+      <div className="card">
+        <h2 className="mb-3 font-semibold">월별 경비 추이</h2>
+        <AreaChart points={s?.by_month ?? []} />
+      </div>
+
+      {/* 계정 / 부서 집계 */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="card">
+          <h2 className="mb-4 font-semibold">계정과목별 집계</h2>
+          <BarList data={s?.by_account ?? []} />
+        </div>
+        <div className="card">
+          <h2 className="mb-4 font-semibold">부서별 집계</h2>
+          <BarList data={s?.by_dept ?? []} />
+        </div>
+      </div>
+
+      {/* 공제 / 상태 */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="card">
+          <h2 className="mb-4 font-semibold">부가세 공제 / 불공제</h2>
+          <SplitBar deductible={s?.deductible_amount ?? 0} nonDeductible={s?.non_deductible_amount ?? 0} />
+        </div>
+        <div className="card">
+          <h2 className="mb-4 font-semibold">상태 분포</h2>
+          <div className="flex flex-wrap gap-2">
+            {STATUS_ORDER.filter((st) => (s?.status_counts[st] ?? 0) > 0).map((st) => (
+              <span key={st} className={`chip ${STATUS_STYLE[st]}`}>
+                {STATUS_LABEL[st]} {s?.status_counts[st]}
+              </span>
+            ))}
+            {Object.keys(s?.status_counts ?? {}).length === 0 && (
+              <p className="text-sm text-gray-400">신청 내역이 없습니다.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 최근 신청 */}
       <div className="card">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-semibold">최근 신청</h2>
@@ -71,7 +110,7 @@ export function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-sm tabular-nums">
-                      {won(r.items.reduce((s, i) => s + i.total_amount, 0))}원
+                      {won(r.items.reduce((sum, i) => sum + i.total_amount, 0))}원
                     </span>
                     <span className={`chip ${STATUS_STYLE[r.status]}`}>{STATUS_LABEL[r.status]}</span>
                   </div>

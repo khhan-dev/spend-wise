@@ -77,6 +77,7 @@ export async function login(email: string, password: string) {
 export const endpoints = {
   me: () => api.get("/api/v1/auth/me").then((r) => r.data),
   accounts: () => api.get("/api/v1/accounts").then((r) => r.data),
+  dashboard: () => api.get("/api/v1/stats/dashboard").then((r) => r.data),
 
   // 조직 · 사용자 관리 (관리자)
   org: () => api.get("/api/v1/org").then((r) => r.data),
