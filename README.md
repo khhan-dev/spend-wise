@@ -104,9 +104,15 @@ npm run dev                        # http://localhost:5173
 ## 테스트
 
 ```bash
+# 백엔드 (59 케이스: 인증·경비·워크플로우·OCR·증빙·조직·통계)
 pip install -r requirements-dev.txt
-pytest                        # 55 케이스 (인증·경비·워크플로우·OCR·증빙·조직)
+pytest
+
+# 프론트엔드 (13 케이스: 도메인 규칙·차트 컴포넌트)
+cd frontend && npm run test
 ```
+
+두 테스트는 push/PR마다 [GitHub Actions](.github/workflows/ci.yml)로 자동 실행됩니다.
 
 ## 범위 (의도적 제외)
 
