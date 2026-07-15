@@ -91,6 +91,12 @@ function DepartmentItem({
   refresh: () => void;
 }) {
   const [teamName, setTeamName] = useState("");
+  const [editDept, setEditDept] = useState(false);
+  const [dName, setDName] = useState(department.name);
+  const [dCode, setDCode] = useState(department.code ?? "");
+  const [editTeamId, setEditTeamId] = useState<string | null>(null);
+  const [tName, setTName] = useState("");
+
   const addTeam = useMutation({
     mutationFn: () => endpoints.createTeam({ department_id: department.id, name: teamName }),
     onSuccess: () => {
@@ -100,32 +106,108 @@ function DepartmentItem({
     onError: onErr,
   });
   const delTeam = useMutation({ mutationFn: (id: string) => endpoints.deleteTeam(id), onSuccess: refresh, onError: onErr });
-  const delDept = useMutation({
-    mutationFn: () => endpoints.deleteDepartment(department.id),
-    onSuccess: refresh,
+  const delDept = useMutation({ mutationFn: () => endpoints.deleteDepartment(department.id), onSuccess: refresh, onError: onErr });
+  const renameDept = useMutation({
+    mutationFn: () => endpoints.updateDepartment(department.id, { name: dName, code: dCode || undefined }),
+    onSuccess: () => {
+      setEditDept(false);
+      refresh();
+    },
+    onError: onErr,
+  });
+  const renameTeam = useMutation({
+    mutationFn: (id: string) => endpoints.updateTeam(id, { name: tName }),
+    onSuccess: () => {
+      setEditTeamId(null);
+      refresh();
+    },
     onError: onErr,
   });
 
   return (
     <div className="rounded-lg border border-gray-200 p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="font-medium">
-          {department.name}
-          {department.code && <span className="ml-2 font-mono text-xs text-gray-400">{department.code}</span>}
-        </div>
-        <button className="text-xs text-gray-400 hover:text-seal" onClick={() => delDept.mutate()}>
-          부서 삭제
-        </button>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        {editDept ? (
+          <div className="flex flex-1 items-center gap-2">
+            <input className="input py-1 text-sm" value={dName} onChange={(e) => setDName(e.target.value)} autoFocus />
+            <input
+              className="input w-24 py-1 text-sm"
+              value={dCode}
+              onChange={(e) => setDCode(e.target.value)}
+              placeholder="코드"
+            />
+            <button
+              className="text-xs font-semibold text-ledger hover:underline disabled:opacity-40"
+              disabled={!dName.trim() || renameDept.isPending}
+              onClick={() => renameDept.mutate()}
+            >
+              저장
+            </button>
+            <button
+              className="text-xs text-gray-400 hover:underline"
+              onClick={() => {
+                setEditDept(false);
+                setDName(department.name);
+                setDCode(department.code ?? "");
+              }}
+            >
+              취소
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="font-medium">
+              {department.name}
+              {department.code && <span className="ml-2 font-mono text-xs text-gray-400">{department.code}</span>}
+            </div>
+            <div className="flex gap-3">
+              <button className="text-xs text-gray-400 hover:text-ledger" onClick={() => setEditDept(true)}>
+                이름 수정
+              </button>
+              <button className="text-xs text-gray-400 hover:text-seal" onClick={() => delDept.mutate()}>
+                부서 삭제
+              </button>
+            </div>
+          </>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {department.teams.map((t) => (
-          <span key={t.id} className="chip bg-ledger-soft text-ledger-dark">
-            {t.name}
-            <button className="ml-1 text-ledger-dark/60 hover:text-seal" onClick={() => delTeam.mutate(t.id)}>
-              ×
-            </button>
-          </span>
-        ))}
+        {department.teams.map((t) =>
+          editTeamId === t.id ? (
+            <span key={t.id} className="inline-flex items-center gap-1">
+              <input
+                className="w-24 rounded-md border border-gray-300 px-2 py-1 text-xs outline-none focus:border-ledger"
+                value={tName}
+                onChange={(e) => setTName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && tName.trim() && renameTeam.mutate(t.id)}
+                autoFocus
+              />
+              <button className="text-xs font-semibold text-ledger hover:underline" onClick={() => renameTeam.mutate(t.id)}>
+                저장
+              </button>
+              <button className="text-xs text-gray-400" onClick={() => setEditTeamId(null)}>
+                취소
+              </button>
+            </span>
+          ) : (
+            <span key={t.id} className="chip bg-ledger-soft text-ledger-dark">
+              {t.name}
+              <button
+                className="ml-1 text-ledger-dark/50 hover:text-ledger-dark"
+                title="이름 수정"
+                onClick={() => {
+                  setEditTeamId(t.id);
+                  setTName(t.name);
+                }}
+              >
+                ✎
+              </button>
+              <button className="ml-0.5 text-ledger-dark/60 hover:text-seal" title="삭제" onClick={() => delTeam.mutate(t.id)}>
+                ×
+              </button>
+            </span>
+          )
+        )}
         <span className="inline-flex items-center gap-1">
           <input
             className="w-28 rounded-md border border-gray-300 px-2 py-1 text-xs outline-none focus:border-ledger"

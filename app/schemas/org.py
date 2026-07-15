@@ -34,6 +34,15 @@ class DepartmentCreate(BaseModel):
     code: str | None = Field(default=None, max_length=30)
 
 
+class DepartmentUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    code: str | None = Field(default=None, max_length=30)
+
+
 class TeamCreate(BaseModel):
     department_id: uuid.UUID
+    name: str = Field(min_length=1, max_length=100)
+
+
+class TeamUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=100)

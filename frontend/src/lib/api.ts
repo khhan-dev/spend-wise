@@ -83,9 +83,13 @@ export const endpoints = {
   org: () => api.get("/api/v1/org").then((r) => r.data),
   createDepartment: (body: { name: string; code?: string }) =>
     api.post("/api/v1/departments", body).then((r) => r.data),
+  updateDepartment: (id: string, body: { name?: string; code?: string }) =>
+    api.patch(`/api/v1/departments/${id}`, body).then((r) => r.data),
   deleteDepartment: (id: string) => api.delete(`/api/v1/departments/${id}`).then((r) => r.data),
   createTeam: (body: { department_id: string; name: string }) =>
     api.post("/api/v1/teams", body).then((r) => r.data),
+  updateTeam: (id: string, body: { name: string }) =>
+    api.patch(`/api/v1/teams/${id}`, body).then((r) => r.data),
   deleteTeam: (id: string) => api.delete(`/api/v1/teams/${id}`).then((r) => r.data),
   users: () => api.get("/api/v1/users").then((r) => r.data),
   createUser: (body: unknown) => api.post("/api/v1/users", body).then((r) => r.data),

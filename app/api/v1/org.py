@@ -11,8 +11,10 @@ from app.schemas.org import (
     CompanyTree,
     DepartmentCreate,
     DepartmentOut,
+    DepartmentUpdate,
     TeamCreate,
     TeamOut,
+    TeamUpdate,
 )
 
 router = APIRouter(tags=["org"])
@@ -47,6 +49,23 @@ def create_department(
     return dept
 
 
+@router.patch("/departments/{department_id}", response_model=DepartmentOut)
+def update_department(
+    department_id: uuid.UUID,
+    body: DepartmentUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(Role.admin)),
+):
+    dept = db.get(Department, department_id)
+    if dept is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="부서를 찾을 수 없습니다.")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(dept, field, value)
+    db.commit()
+    db.refresh(dept)
+    return dept
+
+
 @router.delete("/departments/{department_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_department(
     department_id: uuid.UUID,
@@ -74,6 +93,22 @@ def create_team(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="부서를 찾을 수 없습니다.")
     team = Team(department_id=body.department_id, name=body.name)
     db.add(team)
+    db.commit()
+    db.refresh(team)
+    return team
+
+
+@router.patch("/teams/{team_id}", response_model=TeamOut)
+def update_team(
+    team_id: uuid.UUID,
+    body: TeamUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(Role.admin)),
+):
+    team = db.get(Team, team_id)
+    if team is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="팀을 찾을 수 없습니다.")
+    team.name = body.name
     db.commit()
     db.refresh(team)
     return team

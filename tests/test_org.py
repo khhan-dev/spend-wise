@@ -41,6 +41,29 @@ def test_create_team_and_appears_in_tree(client, auth):
     assert any(t["name"] == "데이터팀" for t in d["teams"])
 
 
+def test_update_department_name_and_code(client, auth):
+    dept = client.post("/api/v1/departments", headers=auth(ADMIN), json={"name": "개발본부", "code": "DEV"}).json()
+    res = client.patch(f"/api/v1/departments/{dept['id']}", headers=auth(ADMIN), json={"name": "기술본부", "code": "TECH"})
+    assert res.status_code == 200
+    assert res.json()["name"] == "기술본부" and res.json()["code"] == "TECH"
+    # 트리에도 반영
+    tree = client.get("/api/v1/org", headers=auth(ADMIN)).json()
+    assert any(d["name"] == "기술본부" for d in tree["departments"])
+
+
+def test_update_team_name(client, auth):
+    tree = client.get("/api/v1/org", headers=auth(ADMIN)).json()
+    team_id = next(t["id"] for d in tree["departments"] for t in d["teams"] if t["name"] == "총무팀")
+    res = client.patch(f"/api/v1/teams/{team_id}", headers=auth(ADMIN), json={"name": "경영지원팀"})
+    assert res.status_code == 200 and res.json()["name"] == "경영지원팀"
+
+
+def test_update_org_requires_admin(client, auth):
+    tree = client.get("/api/v1/org", headers=auth(ADMIN)).json()
+    dept_id = tree["departments"][0]["id"]
+    assert client.patch(f"/api/v1/departments/{dept_id}", headers=auth(EMPLOYEE), json={"name": "x"}).status_code == 403
+
+
 def test_cannot_delete_team_with_users(client, auth):
     # 총무팀에는 시드 사용자가 있음
     tree = client.get("/api/v1/org", headers=auth(ADMIN)).json()
