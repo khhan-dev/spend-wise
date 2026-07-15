@@ -67,5 +67,33 @@ def test_dashboard_scoped_by_role(client, auth, accounts):
     assert mgr_stats["total_amount"] == 73000
 
 
+def test_dashboard_period_filter(client, auth, accounts):
+    # 5월·7월 두 달치 생성
+    for period, amt in [("2026-05", 100000), ("2026-07", 250000)]:
+        client.post("/api/v1/expenses/reports", headers=auth(EMPLOYEE), json={
+            "title": period, "period": period,
+            "items": [{"tx_date": f"{period}-10", "total_amount": amt, "account_id": accounts["복리후생비"],
+                       "evidence_type": "card", "pay_method": "corporate_card"}],
+        })
+
+    # 전체
+    allm = client.get("/api/v1/stats/dashboard", headers=auth(EMPLOYEE)).json()
+    assert allm["total_amount"] == 350000
+    assert len(allm["by_month"]) == 2
+
+    # 7월만
+    jul = client.get("/api/v1/stats/dashboard?period_from=2026-07&period_to=2026-07", headers=auth(EMPLOYEE)).json()
+    assert jul["total_amount"] == 250000
+    assert jul["by_month"] == [{"period": "2026-07", "amount": 250000}]
+
+    # 6월 이후
+    since_jun = client.get("/api/v1/stats/dashboard?period_from=2026-06", headers=auth(EMPLOYEE)).json()
+    assert since_jun["total_amount"] == 250000
+
+
+def test_dashboard_invalid_period_422(client, auth):
+    assert client.get("/api/v1/stats/dashboard?period_from=2026/07", headers=auth(EMPLOYEE)).status_code == 422
+
+
 def test_dashboard_requires_auth(client):
     assert client.get("/api/v1/stats/dashboard").status_code == 401

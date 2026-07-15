@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { endpoints } from "../lib/api";
@@ -8,9 +9,21 @@ import type { DashboardStats, ExpenseReport, ReportStatus } from "../lib/types";
 
 const STATUS_ORDER: ReportStatus[] = ["draft", "submitted", "team_approved", "reviewed", "closed", "rejected"];
 
+const THIS_MONTH = new Date().toISOString().slice(0, 7);
+function shiftMonth(base: string, delta: number): string {
+  const [y, m] = base.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export function DashboardPage() {
   const { user } = useAuth();
-  const { data: stats } = useQuery<DashboardStats>({ queryKey: ["dashboard"], queryFn: endpoints.dashboard });
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const { data: stats } = useQuery<DashboardStats>({
+    queryKey: ["dashboard", from, to],
+    queryFn: () => endpoints.dashboard({ period_from: from || undefined, period_to: to || undefined }),
+  });
   const { data: reports = [] } = useQuery<ExpenseReport[]>({ queryKey: ["reports"], queryFn: endpoints.reports });
 
   const s = stats;
@@ -28,6 +41,32 @@ export function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold">안녕하세요, {user?.name}님</h1>
         <p className="text-sm text-gray-500">경비 처리 현황을 한눈에 확인하세요.</p>
+      </div>
+
+      {/* 기간 필터 */}
+      <div className="card flex flex-wrap items-end gap-3">
+        <div>
+          <label className="label">시작 월</label>
+          <input className="input" type="month" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">종료 월</label>
+          <input className="input" type="month" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+        </div>
+        <div className="flex gap-2">
+          <button className="btn-ghost" onClick={() => { setFrom(shiftMonth(THIS_MONTH, -5)); setTo(THIS_MONTH); }}>
+            최근 6개월
+          </button>
+          <button className="btn-ghost" onClick={() => { setFrom(`${THIS_MONTH.slice(0, 4)}-01`); setTo(THIS_MONTH); }}>
+            올해
+          </button>
+          <button className="btn-ghost" onClick={() => { setFrom(""); setTo(""); }}>
+            전체
+          </button>
+        </div>
+        <span className="ml-auto text-xs text-gray-400">
+          {from || to ? `기간: ${from || "처음"} ~ ${to || "현재"}` : "전체 기간"}
+        </span>
       </div>
 
       {/* KPI */}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -14,13 +14,19 @@ _NON_QUALIFIED = [EvidenceType.simple_receipt, EvidenceType.etc]
 _MISC = "미분류"
 
 
-def _scoped_report_ids(db: Session, user: User) -> list:
-    """열람 범위(직원=본인 / 팀장=소속 팀 / 관리자=전사)에 해당하는 신청서 id."""
+def _scoped_report_ids(
+    db: Session, user: User, period_from: str | None = None, period_to: str | None = None
+) -> list:
+    """열람 범위(직원=본인 / 팀장=소속 팀 / 관리자=전사) + 기간 필터에 해당하는 신청서 id."""
     q = select(ExpenseReport.id)
     if user.role == Role.employee:
         q = q.where(ExpenseReport.user_id == user.id)
     elif user.role == Role.manager and user.team_id:
         q = q.join(User, ExpenseReport.user_id == User.id).where(User.team_id == user.team_id)
+    if period_from:
+        q = q.where(ExpenseReport.period >= period_from)  # 'YYYY-MM' 문자열 비교
+    if period_to:
+        q = q.where(ExpenseReport.period <= period_to)
     return list(db.scalars(q))
 
 
@@ -29,9 +35,14 @@ def _sum(db: Session, *conditions) -> int:
 
 
 @router.get("/dashboard", response_model=DashboardStats)
-def dashboard(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """대시보드 집계 — 합계·상태분포·계정/부서/월별 집계·공제·경고."""
-    ids = _scoped_report_ids(db, user)
+def dashboard(
+    period_from: str | None = Query(None, pattern=r"^\d{4}-\d{2}$"),
+    period_to: str | None = Query(None, pattern=r"^\d{4}-\d{2}$"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """대시보드 집계 — 합계·상태분포·계정/부서/월별 집계·공제·경고. period_from/to로 귀속월 필터."""
+    ids = _scoped_report_ids(db, user, period_from, period_to)
     empty = DashboardStats(
         total_amount=0, item_count=0, report_count=0, status_counts={},
         deductible_amount=0, non_deductible_amount=0, warning_count=0,
