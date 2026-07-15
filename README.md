@@ -1,5 +1,11 @@
 # 경비처리 웹서비스 (Expense Management)
 
+[![CI](https://github.com/khhan-dev/spend-wise/actions/workflows/ci.yml/badge.svg)](https://github.com/khhan-dev/spend-wise/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+
 회사 경영지원실의 **월간 경비 처리 → 세무 신고 자료 생성**을 자동화하는 사내 웹서비스입니다.
 직원이 영수증을 올리면 **OCR로 항목을 자동 인식**하고, 소속 부서/팀으로 자동 분류하며, 승인 워크플로우를 거쳐
 **클릭 한 번으로 세무대리인 전달용 엑셀 + 증빙 ZIP**을 생성합니다.
